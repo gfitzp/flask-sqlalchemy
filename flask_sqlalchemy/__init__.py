@@ -617,6 +617,19 @@ class _EngineConnector(object):
         # Give options set in SQLAlchemy.__init__() ultimate priority
         options.update(self._sa._engine_options)
 
+        # flask-sqlalchemy sets pool_size = 10 for mysql connections
+        # in apply_driver_hacks(), but SQLAlchemy throws an error if specifying pool_size
+        # when also setting the poolclass to NullPool. Check to see if poolclass is of
+        # type NullPool, and if it is, remove the pool_size option if present.
+        #
+        # Seems that this is fixed in flask-sqlalchemy 3.0 but I then have had issues with
+        # paginate(), so this is a quick and dirty fix to handle this issue with my app
+        # without needing to upgrade past 2.5.1
+
+        from sqlalchemy.pool import NullPool
+        if type(options.get("poolclass")) == type(NullPool) and options.get("pool_size"):
+            options.pop("pool_size")
+
         return sa_url, options
 
 
